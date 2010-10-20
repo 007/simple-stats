@@ -6,15 +6,36 @@ from twisted.internet import reactor
 
 pref_port = 13023
 
-# default ranges to keep in our RRD
-RRD_ranges = [  'RRA:AVERAGE:0.99999:1:8640', # 24 hours of 10-second average
-                'RRA:AVERAGE:0.99999:6:10080', # keep 168 hours (24x7) of 1-minute average
-                'RRA:AVERAGE:0.99999:360:960', # 40 days of 1-hour average
-                'RRA:AVERAGE:0.99999:8640:4000' ] # 10 years of 1-day average
 
 def create_rrd(fname, dsname):
-    RRD_PARAMS = [ str(fname) + '.rrd', '--step', '10', 'DS:' + dsname + ':GAUGE:10:0:U' ]
-    RRD_PARAMS.extend(RRD_ranges)
+    # where to store RRDs
+    RRD_basepath = '/home/rmoore/stats/'
+ 
+    # default step size, 10-second resolution
+    RRD_step = 10
+
+    # default ranges to keep in our RRD:
+    # 24 hours of 10-second average
+    # 10 days of 1-minute average
+    # 40 days of 1-hour average
+    # 1 year of 1-day average
+    # 10 years of 10-day average
+
+    # time scale: 1 day, 10 days, 40 days,   1 year, 10 years (in seconds)
+    RRD_scale = [ 86400,  864000, 3456000, 31622400, 315576000 ]
+
+    # resolution: 10 second, 1 minute, 1 hour, 1 day, 10 day (in seconds) 
+    RRD_res = [          10,       60  , 3600, 86400, 864000 ]
+
+    # explict str cast for fname and dsname, in case they're INT from input
+    RRD_PARAMS = [ RRD_basepath + str(fname) + '.rrd', '--step', str(RRD_step), 'DS:' + str(dsname) + ':GAUGE:12:0:U' ]
+    # TODO: create subdirectories based on fname or hash(fname) so we don't dump 10k RRDs in a single dir
+
+    for res, scale in zip(RRD_res, RRD_scale):
+        step_res = res / RRD_step
+        step_row = scale / res
+        RRD_PARAMS.append('RRA:AVERAGE:0.99999:' + str(step_res) + ':' + str(step_row))
+
     result = apply(rrdtool.create, RRD_PARAMS)
 
 
