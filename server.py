@@ -1,8 +1,24 @@
-#!/bin/env python
+#!/usr/bin/env python
+
+import rrdtool
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
 
 pref_port = 13023
+
+# default ranges to keep in our RRD
+RRD_ranges = [  'RRA:AVERAGE:0.99999:1:8640', # 24 hours of 10-second average
+                'RRA:AVERAGE:0.99999:6:10080', # keep 168 hours (24x7) of 1-minute average
+                'RRA:AVERAGE:0.99999:360:960', # 40 days of 1-hour average
+                'RRA:AVERAGE:0.99999:8640:4000' ] # 10 years of 1-day average
+
+def create_rrd(fname, dsname):
+    RRD_PARAMS = [ str(fname) + '.rrd', '--step', '10', 'DS:' + dsname + ':GAUGE:10:0:U' ]
+    RRD_PARAMS.extend(RRD_ranges)
+    result = apply(rrdtool.create, RRD_PARAMS)
+
+
+# example: create_rrd('hits', 'apache_hits') to create hits.rrd containing apache_hits as a data source
 
 class StatServer(DatagramProtocol):
     def __init__(self, core):
