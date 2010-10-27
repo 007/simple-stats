@@ -2,7 +2,7 @@
 function logStat($statKey, $statVal = 1, $statType = 'SUM') {
 
     $host_server = '127.0.0.1';
-    $host_port = 13023
+    $host_port = 13023;
 
     // 10 second connect timeout
     $conn = fsockopen('udp://' . $host_server, $host_port, $errno, $errstr, 10);
@@ -25,6 +25,9 @@ $prodArray = array("product1", "product2");
 logStat("products_sold", count($prodArray));
 foreach($prodArray as $key=>$val) {
     logStat("product_" . $val, 1);
+}
 logStat("key");
 logStat("key2");
 logStat("key3", 10);
+
+
