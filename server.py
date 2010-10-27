@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, re
+import sys, os, re
 
 import rrdtool
 from twisted.internet.protocol import DatagramProtocol
@@ -9,17 +9,17 @@ from twisted.internet import reactor, task
 pref_port = 13023
 
 class RRD(object):
-    def clean_str(stat):
+    def clean_str(self, stat):
         # create a clean version of a string for RRDs, only alpha-num and underscore
         return re.sub('[^A-Za-z0-9]+', '_', str(stat))
 
-    def map_name(stat):
+    def map_name(self, stat):
         # map a stat name to a physical RRD file
         # TODO: create subdirectories based on stat or hash(stat) so we don't dump 10k RRDs in a single dir
         RRD_basepath = '/home/rmoore/stats/'
         return RRD_basepath + self.clean_str(stat) + '.rrd'
 
-    def create(dsname):
+    def create(self, dsname):
         # default step size, 10-second resolution
         RRD_step = 10
 
@@ -45,11 +45,12 @@ class RRD(object):
 
         result = apply(rrdtool.create, RRD_PARAMS)
 
-    @staticmethod
-    def update(stat, val):
+    def update(self, stat, val):
+        print "\tDumping stat %s value %s" % (stat, val)
         stat_file = self.map_name(stat)
         # need to create file, then we can update
-        if not os.path.isfile(statfile):
+        if not os.path.isfile(stat_file):
+            print "\t__Creating RRD for %s__" % (stat)
             self.create(stat)
         rrdtool.update(stat_file, '--', 'N:' + str(val))
 
@@ -57,9 +58,10 @@ class RRD(object):
 class Stats(object):
     def __init__(self):
         self.stats = {}
+        self.RRD = RRD()
 
     def update(self, type, key, val):
-        print "Updating %s with %s using %s" % (key, value, type)
+        print "Updating %s with %s using %s" % (key, val, type)
 
         # count = 1 for SUM and AVG, but AVG will increment for each additional value
         increment = 1
@@ -72,17 +74,17 @@ class Stats(object):
         if type == 'AVG':
             self.stats[key]['count'] += increment
 
-        self.stats[key]['val'] += val
+        self.stats[key]['val'] += int(val)
 
 
     def dump(self):
-        print "__dumping stats"
+        print "Dumping stats"
         # dump stats to RRDs
-        # pop each element out of dict as we process, that will clean out list as we dump stats
-        while self.stats:
-            stat = self.stats.pop()
-            RRD.update(stat['name'], stat['val'] / stat['count'])
-        print "__done"
+        for stat in self.stats:
+            obj = self.stats[stat]
+            self.RRD.update(obj['name'], obj['val'] / obj['count'])
+        self.stats = {}
+        print "Done dumping stats"
 
 
 class StatServer(DatagramProtocol):
@@ -113,8 +115,10 @@ class StatServer(DatagramProtocol):
         data = data.strip()
         for line in data.splitlines():
             type, key, val = line.split()
-            Stat.update(type, key, val)
+            self.statHolder.update(type, key, val)
 
+# remap output to stderr
+sys.stdout = sys.stderr
 reactor.listenUDP(pref_port, StatServer())
 reactor.run()
 
