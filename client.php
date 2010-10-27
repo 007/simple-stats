@@ -1,8 +1,11 @@
 <?php
 function logStat($statKey, $statVal = 1, $statType = 'SUM') {
 
+    $host_server = '127.0.0.1';
+    $host_port = 13023
+
     // 10 second connect timeout
-    $conn = fsockopen('udp://statserver.repdef.com', 13023, $errno, $errstr, 10);
+    $conn = fsockopen('udp://' . $host_server, $host_port, $errno, $errstr, 10);
     if (!$conn) {
         // socket open error
         // since we're using UDP, this should never happen;

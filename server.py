@@ -55,33 +55,32 @@ class RRD(object):
 
 
 class Stats(object):
-    stats = {}
+    def __init__(self):
+        self.stats = {}
 
-    @staticmethod
-    def update(type, key, val):
+    def update(self, type, key, val):
         print "Updating %s with %s using %s" % (key, value, type)
 
         # count = 1 for SUM and AVG, but AVG will increment for each additional value
         increment = 1
-        if not key in stats:
+        if not key in self.stats:
             # if we're creating this stat for the first time, set count == 1
             # once we do that, need to set increment == 0 so we don't count the first AVG value as 2 entries
-            stats[key] = {'name':key, 'val':0, 'count':1}
+            self.stats[key] = {'name':key, 'val':0, 'count':1}
             increment = 0
     
         if type == 'AVG':
-            stats[key]['count'] += increment
+            self.stats[key]['count'] += increment
 
-        stats[key]['val'] += val
+        self.stats[key]['val'] += val
 
 
-    @staticmethod
-    def dump():
+    def dump(self):
         print "__dumping stats"
         # dump stats to RRDs
         # pop each element out of dict as we process, that will clean out list as we dump stats
-        while stats:
-            stat = stats.pop()
+        while self.stats:
+            stat = self.stats.pop()
             RRD.update(stat['name'], stat['val'] / stat['count'])
         print "__done"
 
@@ -91,11 +90,13 @@ class StatServer(DatagramProtocol):
     def startProtocol(self):
         print "Starting stat_server"
         self.summarize = None
+        self.statHolder = Stats()
         DatagramProtocol.startProtocol(self)
 
         # start stat dump
-        self.summarize = task.LoopingCall(Stats.dump)
-        self.summarize.start(5, now=False)
+        self.summarize = task.LoopingCall(self.statHolder.dump)
+        #self.summarize.start(10, now=False)
+        self.summarize.start(10)
 
     def stopProtocol(self):
         print "Stopping stat_server:"
@@ -103,7 +104,7 @@ class StatServer(DatagramProtocol):
         print "\tStopping summary loop"
         self.summarize.stop()
         print "\tDumping accumulated stats"
-        Stats.dump()
+        self.statHolder.dump()
         print "done"
         print ""
 
