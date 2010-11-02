@@ -24,11 +24,11 @@ function logStat($statKey, $statVal = 1, $statType = 'SUM') {
 // for load testing:
 $indexArray = array();
 for($i = 0; $i < 100; $i++) $indexArray[$i] = 0;
-$loopCount = 1000;
+$loopCount = 10000;
 //mt_srand(42);
 for ($i = 0; $i < $loopCount; $i++) {
-    $index = mt_rand(0, 99);
-    $val = mt_rand(1,10);
+    $index = mt_rand(0, 10);
+    $val = mt_rand(1,100);
     $indexArray[$index] += $val;
     logStat('test_rrd_' . $index, $val);
 }
