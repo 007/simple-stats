@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
-import sys, os, re
+import sys, os, re, time
 import rrdtool
 from twisted.internet import reactor, task
 from twisted.internet.protocol import DatagramProtocol
 
 pref_port = 13023
+
+# helper function
+# TODO: don't be this guy
+def log(str):
+    sys.stderr.write(time.strftime("[%Y/%m/%d:%H:%M:%S] ", time.localtime()) + str + "\n")
 
 class RRD(object):
     def clean_str(self, stat):
@@ -45,11 +50,11 @@ class RRD(object):
         result = apply(rrdtool.create, RRD_PARAMS)
 
     def update(self, stat, val):
-        print "\tDumping stat %s value %s" % (stat, val)
+        log("\tDumping stat %s value %s" % (stat, val))
         stat_file = self.map_name(stat)
         # need to create file, then we can update
         if not os.path.isfile(stat_file):
-            print "\t\tCreating RRD for %s" % (stat)
+            log("\t\tCreating RRD for %s" % (stat))
             self.create(stat)
             # meta stat - how many new stat files we created
             self.update('rrd_file_created', 1)
@@ -62,8 +67,8 @@ class Stats(object):
         self.RRD = RRD()
 
     def update(self, type, key, val):
-        # debug
-        # print "Updating %s with %s using %s" % (key, val, type)
+        # debug (logs way WAY too much)
+        # log("Updating %s with %s using %s" % (key, val, type))
 
         # count = 1 for SUM and AVG, but AVG will increment for each additional value
         increment = 1
@@ -79,19 +84,19 @@ class Stats(object):
         self.stats[key]['val'] += int(val)
 
     def dump(self):
-        print "Dumping stats"
+        log("Dumping stats")
         # dump stats to RRDs
         for stat in self.stats:
             obj = self.stats[stat]
             self.RRD.update(obj['name'], obj['val'] / obj['count'])
         self.stats = {}
-        print "Done dumping stats"
+        log("Done dumping stats")
 
 
 class StatServer(DatagramProtocol):
 
     def startProtocol(self):
-        print "Starting stat_server"
+        log("Starting stat_server")
         self.summarize = None
         self.statHolder = Stats()
         DatagramProtocol.startProtocol(self)
@@ -101,18 +106,21 @@ class StatServer(DatagramProtocol):
         self.summarize.start(10, now=False)
 
     def stopProtocol(self):
-        print "Stopping stat_server:"
+        # clean shutdown has to happen like:
+        #  - stop accepting new packets
+        #  - stop our loop to dump stats
+        #  - manually dump any remaining stats
+        log("Stopping stat_server:")
         DatagramProtocol.stopProtocol(self)
-        print "\tStopping summary loop"
+        log("\tStopping summary loop")
         self.summarize.stop()
-        print "\tDumping accumulated stats"
+        log("\tDumping accumulated stats")
         self.statHolder.dump()
-        print "done"
-        print ""
+        log("Stopped stat_server")
 
     def datagramReceived(self, data, (host, port)):
-        # debug
-        # print "received %r from %s:%d" % (data, host, port)
+        # debug (logs way too much)
+        # log("received %r from %s:%d" % (data, host, port))
         data = data.strip()
         # meta stat - how many packets we got
         self.statHolder.update('SUM', 'rrd_stat_packets', 1)
@@ -122,8 +130,6 @@ class StatServer(DatagramProtocol):
             # meta stat - how many individual stats we got
             self.statHolder.update('SUM', 'rrd_stat_updates', 1)
 
-# remap output to stderr
-sys.stdout = sys.stderr
 reactor.listenUDP(pref_port, StatServer())
 reactor.run()
 
