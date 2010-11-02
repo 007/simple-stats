@@ -1,26 +1,25 @@
 #!/usr/bin/env python
 
 import sys, os, re
-
 import rrdtool
-from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor, task
+from twisted.internet.protocol import DatagramProtocol
 
 pref_port = 13023
 
 class RRD(object):
     def clean_str(self, stat):
         # create a clean version of a string for RRDs, only alpha-num and underscore
-        return re.sub('[^A-Za-z0-9]+', '_', str(stat))
+        return re.sub('[^A-Za-z0-9_]+', '_', str(stat))
 
     def map_name(self, stat):
         # map a stat name to a physical RRD file
         # TODO: create subdirectories based on stat or hash(stat) so we don't dump 10k RRDs in a single dir
-        RRD_basepath = '/home/rmoore/stats/'
+        RRD_basepath = '/var/stats/'
         return RRD_basepath + self.clean_str(stat) + '.rrd'
 
     def create(self, dsname):
-        # default step size, 10-second resolution
+        # default step size in seconds
         RRD_step = 10
 
         # default ranges to keep in our RRD:
@@ -33,7 +32,7 @@ class RRD(object):
         # time scale: 1 day, 10 days, 40 days,   1 year, 10 years (in seconds)
         RRD_scale = [ 86400,  864000, 3456000, 31622400, 315576000 ]
 
-        # resolution: 10 second, 1 minute, 1 hour, 1 day, 10 day (in seconds) 
+        # resolution: 10 second, 1 minute, 1 hour, 1 day, 10 day (in seconds)
         RRD_res = [          10,       60  , 3600, 86400, 864000 ]
 
         RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:' + self.clean_str(dsname) + ':GAUGE:12:0:U' ]
@@ -50,8 +49,10 @@ class RRD(object):
         stat_file = self.map_name(stat)
         # need to create file, then we can update
         if not os.path.isfile(stat_file):
-            print "\t__Creating RRD for %s__" % (stat)
+            print "\t\tCreating RRD for %s" % (stat)
             self.create(stat)
+            # meta stat - how many new stat files we created
+            self.update('rrd_file_created', 1)
         rrdtool.update(stat_file, '--', 'N:' + str(val))
 
 
@@ -61,7 +62,8 @@ class Stats(object):
         self.RRD = RRD()
 
     def update(self, type, key, val):
-        print "Updating %s with %s using %s" % (key, val, type)
+        # debug
+        # print "Updating %s with %s using %s" % (key, val, type)
 
         # count = 1 for SUM and AVG, but AVG will increment for each additional value
         increment = 1
@@ -70,12 +72,11 @@ class Stats(object):
             # once we do that, need to set increment == 0 so we don't count the first AVG value as 2 entries
             self.stats[key] = {'name':key, 'val':0, 'count':1}
             increment = 0
-    
+
         if type == 'AVG':
             self.stats[key]['count'] += increment
 
         self.stats[key]['val'] += int(val)
-
 
     def dump(self):
         print "Dumping stats"
@@ -95,10 +96,9 @@ class StatServer(DatagramProtocol):
         self.statHolder = Stats()
         DatagramProtocol.startProtocol(self)
 
-        # start stat dump
+        # start stat dump collector task
         self.summarize = task.LoopingCall(self.statHolder.dump)
-        #self.summarize.start(10, now=False)
-        self.summarize.start(10)
+        self.summarize.start(10, now=False)
 
     def stopProtocol(self):
         print "Stopping stat_server:"
@@ -111,15 +111,19 @@ class StatServer(DatagramProtocol):
         print ""
 
     def datagramReceived(self, data, (host, port)):
-        print "received %r from %s:%d" % (data, host, port)
+        # debug
+        # print "received %r from %s:%d" % (data, host, port)
         data = data.strip()
+        # meta stat - how many packets we got
+        self.statHolder.update('SUM', 'rrd_stat_packets', 1)
         for line in data.splitlines():
             type, key, val = line.split()
             self.statHolder.update(type, key, val)
+            # meta stat - how many individual stats we got
+            self.statHolder.update('SUM', 'rrd_stat_updates', 1)
 
 # remap output to stderr
 sys.stdout = sys.stderr
 reactor.listenUDP(pref_port, StatServer())
 reactor.run()
-
 
