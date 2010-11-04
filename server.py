@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, re, time
+import sys, os, re, time, math
 import rrdtool
 from twisted.internet import reactor, task
 from twisted.internet.protocol import DatagramProtocol
@@ -81,7 +81,7 @@ class Stats(object):
         if type == 'AVG':
             self.stats[key]['count'] += increment
 
-        self.stats[key]['val'] += int(val)
+        self.stats[key]['val'] += math.ceil(val)
 
     def dump(self):
         log("Dumping stats")
