@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, os, re, time, math
+import sys, os, re, time
 import rrdtool
 from twisted.internet import reactor, task
 from twisted.internet.protocol import DatagramProtocol
@@ -75,13 +75,13 @@ class Stats(object):
         if not key in self.stats:
             # if we're creating this stat for the first time, set count == 1
             # once we do that, need to set increment == 0 so we don't count the first AVG value as 2 entries
-            self.stats[key] = {'name':key, 'val':0, 'count':1}
+            self.stats[key] = {'name':key, 'val':0.0, 'count':1}
             increment = 0
 
         if type == 'AVG':
             self.stats[key]['count'] += increment
 
-        self.stats[key]['val'] += math.ceil(val)
+        self.stats[key]['val'] += float(val)
 
     def dump(self):
         log("Dumping stats")
