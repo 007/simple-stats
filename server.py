@@ -46,6 +46,8 @@ class RRD(object):
             step_res = res / RRD_step
             step_row = scale / res
             RRD_PARAMS.append('RRA:AVERAGE:0.99999:' + str(step_res) + ':' + str(step_row))
+            RRD_PARAMS.append('RRA:MIN:0.99999:' + str(step_res) + ':' + str(step_row))
+            RRD_PARAMS.append('RRA:MAX:0.99999:' + str(step_res) + ':' + str(step_row))
 
         result = apply(rrdtool.create, RRD_PARAMS)
 
