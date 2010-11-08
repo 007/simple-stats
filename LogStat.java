@@ -13,24 +13,19 @@ class LogStat {
     private static DatagramSocket ds = null;
     private static InetSocketAddress sock_host = null;
 
-    private static void InitVars() {
+    static {
         try {
-            // default to 64-byte packet, tweak this as necessary to avoid reallocations
-            if (buffer == null) { buffer = new StringBuffer(64); }
+            if (buffer == null) { buffer = new StringBuffer(1024); }
             if (ds == null) { ds = new DatagramSocket(); }
             if (sock_host == null) { sock_host = new InetSocketAddress(server_host, server_port); }
-            buffer.setLength(0); // TODO: does this undo the 64 above?
         } catch (Exception e) {
         }
     }
 
     // example: LogStat.stat("key", 1, "SUM");
-    public static void stat(String key, int value, String type) {
-
-        // initialize singleton-esque vars
-        InitVars();
-
+    public synchronized static void stat(String key, int value, String type) {
         try {
+            buffer.setLength(0);
             buffer.append(type);
             buffer.append("\t");
             buffer.append(key);
