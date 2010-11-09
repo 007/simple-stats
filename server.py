@@ -40,14 +40,14 @@ class RRD(object):
         # resolution: 10 second, 1 minute, 1 hour, 1 day, 10 day (in seconds)
         RRD_res = [          10,       60  , 3600, 86400, 864000 ]
 
-        RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:' + self.clean_str(dsname) + ':GAUGE:300:0:U' ]
+        RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:' + self.clean_str(dsname) + ':GAUGE:120:0:U' ]
 
         for res, scale in zip(RRD_res, RRD_scale):
             step_res = res / RRD_step
             step_row = scale / res
-            RRD_PARAMS.append('RRA:AVERAGE:0.5:' + str(step_res) + ':' + str(step_row))
-            RRD_PARAMS.append('RRA:MIN:0.5:' + str(step_res) + ':' + str(step_row))
-            RRD_PARAMS.append('RRA:MAX:0.5:' + str(step_res) + ':' + str(step_row))
+            RRD_PARAMS.append('RRA:AVERAGE:0.999:' + str(step_res) + ':' + str(step_row))
+            RRD_PARAMS.append('RRA:MIN:0.999:' + str(step_res) + ':' + str(step_row))
+            RRD_PARAMS.append('RRA:MAX:0.999:' + str(step_res) + ':' + str(step_row))
 
         result = apply(rrdtool.create, RRD_PARAMS)
 
