@@ -87,13 +87,13 @@ class Stats(object):
         self.stats[key]['val'] += float(val)
 
     def dump(self):
-        log("Dumping stats")
+        #log("Dumping stats")
         # dump stats to RRDs
         for stat in self.stats:
             obj = self.stats[stat]
             self.RRD.update(obj['name'], obj['val'] / obj['count'])
         self.stats = {}
-        log("Done dumping stats")
+        #log("Done dumping stats")
 
 
 class StatServer(DatagramProtocol):
