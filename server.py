@@ -10,7 +10,7 @@ pref_port = 13023
 # helper function
 # TODO: don't be this guy
 def log(str):
-    sys.stderr.write(time.strftime("[%Y/%m/%d:%H:%M:%S] ", time.localtime()) + str + "\n")
+    sys.stderr.write(time.strftime("[%Y/%m/%d %H:%M:%S] ", time.localtime()) + str + "\n")
 
 class RRD(object):
     def clean_str(self, stat):
@@ -40,14 +40,15 @@ class RRD(object):
         # resolution: 10 second, 1 minute, 1 hour, 1 day, 10 day (in seconds)
         RRD_res = [          10,       60  , 3600, 86400, 864000 ]
 
-        RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:' + self.clean_str(dsname) + ':GAUGE:120:0:U' ]
+        RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:' + self.clean_str(dsname) + ':GAUGE:60:0:U' ]
 
         for res, scale in zip(RRD_res, RRD_scale):
             step_res = res / RRD_step
             step_row = scale / res
-            RRD_PARAMS.append('RRA:AVERAGE:0.999:' + str(step_res) + ':' + str(step_row))
-            RRD_PARAMS.append('RRA:MIN:0.999:' + str(step_res) + ':' + str(step_row))
-            RRD_PARAMS.append('RRA:MAX:0.999:' + str(step_res) + ':' + str(step_row))
+            RRD_PARAMS.append('RRA:AVERAGE:0.5:' + str(step_res) + ':' + str(step_row))
+            if step_res > 1:
+                RRD_PARAMS.append('RRA:MIN:0.5:' + str(step_res) + ':' + str(step_row))
+                RRD_PARAMS.append('RRA:MAX:0.5:' + str(step_res) + ':' + str(step_row))
 
         result = apply(rrdtool.create, RRD_PARAMS)
 
