@@ -2,6 +2,7 @@
 
 import sys, os, re, time
 import rrdtool
+
 from twisted.internet import reactor, task
 from twisted.internet.protocol import DatagramProtocol
 
@@ -21,7 +22,7 @@ class RRD(object):
         # map a stat name to a physical RRD file
         # TODO: create subdirectories based on stat or hash(stat) so we don't dump 10k RRDs in a single dir
         RRD_basepath = '/var/stats/'
-        return RRD_basepath + self.clean_str(stat) + '.rrd'
+        return RRD_basepath + stat + '.rrd'
 
     def create(self, dsname):
         # default step size in seconds
@@ -40,7 +41,7 @@ class RRD(object):
         # resolution: 10 second, 1 minute, 1 hour, 1 day, 10 day (in seconds)
         RRD_res = [          10,       60  , 3600, 86400, 864000 ]
 
-        RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:' + self.clean_str(dsname) + ':GAUGE:60:0:U' ]
+        RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:' + dsname + ':GAUGE:60:0:U' ]
 
         for res, scale in zip(RRD_res, RRD_scale):
             step_res = res / RRD_step
@@ -69,6 +70,10 @@ class Stats(object):
         self.stats = {}
         self.RRD = RRD()
 
+    def clean_str(self, stat):
+        # create a clean version of a string for RRDs, only alpha-num and underscore
+        return re.sub('[^A-Za-z0-9_]+', '_', str(stat))
+
     def update(self, type, key, val):
         # debug (logs way WAY too much)
         # log("Updating %s with %s using %s" % (key, val, type))
@@ -88,16 +93,15 @@ class Stats(object):
 
     def dump(self):
         #log("Dumping stats")
-        # dump stats to RRDs
+        # dump stats
         for stat in self.stats:
             obj = self.stats[stat]
-            self.RRD.update(obj['name'], obj['val'] / obj['count'])
+            self.RRD.update(self.clean_str(obj['name']), obj['val'] / obj['count'])
         self.stats = {}
         #log("Done dumping stats")
 
 
 class StatServer(DatagramProtocol):
-
     def startProtocol(self):
         log("Starting stat_server")
         self.summarize = None
