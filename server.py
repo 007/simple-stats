@@ -41,7 +41,7 @@ class RRD(object):
         # resolution: 10 second, 1 minute, 1 hour, 1 day, 10 day (in seconds)
         RRD_res = [          10,       60  , 3600, 86400, 864000 ]
 
-        RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:' + dsname + ':GAUGE:120:0:U' ]
+        RRD_PARAMS = [ self.map_name(dsname), '--step', str(RRD_step), 'DS:WTF:GAUGE:120:0:U' ]
 
         for res, scale in zip(RRD_res, RRD_scale):
             step_res = res / RRD_step
