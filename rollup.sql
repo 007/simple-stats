@@ -22,8 +22,6 @@ REPLACE hour_summary SELECT TRUNC_TO_HOUR(ts) t, func, stat, SUM(data) FROM minu
 REPLACE hour_summary SELECT TRUNC_TO_HOUR(ts) t, func, stat, AVG(data) FROM minute_summary WHERE func = 'AVG' AND ts < @atomic_now GROUP BY t, stat;
 REPLACE hour_summary SELECT TRUNC_TO_HOUR(ts) t, func, stat, MIN(data) FROM minute_summary WHERE func = 'MIN' AND ts < @atomic_now GROUP BY t, stat;
 REPLACE hour_summary SELECT TRUNC_TO_HOUR(ts) t, func, stat, MAX(data) FROM minute_summary WHERE func = 'MAX' AND ts < @atomic_now GROUP BY t, stat;
--- doing this at the end
--- DELETE FROM minute_summary WHERE ts < @atomic_now;
 COMMIT;
 
 -- day summary grouping
@@ -33,16 +31,15 @@ REPLACE day_summary SELECT TRUNC_TO_DAY(ts) t, func, stat, SUM(data) FROM hour_s
 REPLACE day_summary SELECT TRUNC_TO_DAY(ts) t, func, stat, AVG(data) FROM hour_summary WHERE func = 'AVG' AND ts < @atomic_now GROUP BY t, stat;
 REPLACE day_summary SELECT TRUNC_TO_DAY(ts) t, func, stat, MIN(data) FROM hour_summary WHERE func = 'MIN' AND ts < @atomic_now GROUP BY t, stat;
 REPLACE day_summary SELECT TRUNC_TO_DAY(ts) t, func, stat, MAX(data) FROM hour_summary WHERE func = 'MAX' AND ts < @atomic_now GROUP BY t, stat;
--- doing this at the end
--- DELETE FROM hour_summary WHERE ts < @atomic_now;
 COMMIT;
 
 -- cleanup old entries in minute/hour table
--- remove minute-summary after 2 days
+-- remove minute-summary after 2 days, hour_sumamry after 31 (should be 7?)
 DELETE FROM minute_summary WHERE ts < DATE_SUB(@atomic_now, INTERVAL 2 DAY);
 DELETE FROM hour_summary WHERE ts < DATE_SUB(@atomic_now, INTERVAL 31 DAY);
 
+-- disable for now, should just be run every once-in-a-while
 -- no-op ALTER will rebuild InnoDB index
 -- massive overkill? probably, but it's < 10k rows - should be awesomely fast
-ALTER TABLE minute_summary ENGINE=InnoDB;
-ALTER TABLE hour_summary ENGINE=InnoDB;
+-- ALTER TABLE minute_summary ENGINE=InnoDB;
+-- ALTER TABLE hour_summary ENGINE=InnoDB;
