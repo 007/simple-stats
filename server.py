@@ -2,6 +2,7 @@
 
 import sys, os, re, time
 import rrdtool
+import MySQLdb
 
 from twisted.internet import reactor, task
 from twisted.internet.protocol import DatagramProtocol
@@ -14,9 +15,6 @@ def log(str):
     sys.stderr.write(time.strftime("[%Y/%m/%d %H:%M:%S] ", time.localtime()) + str + "\n")
 
 class RRD(object):
-    def clean_str(self, stat):
-        # create a clean version of a string for RRDs, only alpha-num and underscore
-        return re.sub('[^A-Za-z0-9_]+', '_', str(stat))
 
     def map_name(self, stat):
         # map a stat name to a physical RRD file
@@ -64,11 +62,27 @@ class RRD(object):
             self.update('rrd_file_created', 1)
         rrdtool.update(stat_file, '--', 'N:' + str(val))
 
+class MySQL(object):
+    def init(self):
+        self.conn = MySQLdb.connect(host = 'localhost',
+                                    user = 'root',
+                                    passwd = 'root',
+                                    db = 'stats')
+        self.cursor = self.conn.cursor()
+
+    def update(self, stat, val, type):
+        sql = "INSERT INTO raw VALUES(NOW(), %s, %s, %s);"
+        self.cursor.execute(sql, (type, stat, val))
+
+    def cleanup(self):
+        self.cursor.close()
+        self.conn.close()
 
 class Stats(object):
     def __init__(self):
         self.stats = {}
         self.RRD = RRD()
+        self.MySQL = MySQL()
 
     def clean_str(self, stat):
         # create a clean version of a string for RRDs, only alpha-num and underscore
@@ -83,7 +97,7 @@ class Stats(object):
         if not key in self.stats:
             # if we're creating this stat for the first time, set count == 1
             # once we do that, need to set increment == 0 so we don't count the first AVG value as 2 entries
-            self.stats[key] = {'name':key, 'val':0.0, 'count':1}
+            self.stats[key] = {'name':key, 'val':0.0, 'count':1, 'type':type}
             increment = 0
 
         if type == 'AVG':
@@ -93,10 +107,13 @@ class Stats(object):
 
     def dump(self):
         #log("Dumping stats")
-        # dump stats
+        self.MySQL.init()
         for stat in self.stats:
             obj = self.stats[stat]
-            self.RRD.update(self.clean_str(obj['name']), obj['val'] / obj['count'])
+            clean_name = self.clean_str(obj['name']);
+            self.RRD.update(clean_name, obj['val'] / obj['count'])
+            self.MySQL.update(clean_name, obj['val'] / obj['count'], obj['type'])
+        self.MySQL.cleanup()
         self.stats = {}
         #log("Done dumping stats")
 
