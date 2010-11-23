@@ -127,7 +127,7 @@ class StatServer(DatagramProtocol):
 
         # start stat dump collector task
         self.summarize = task.LoopingCall(self.statHolder.dump)
-        self.summarize.start(10, now=False)
+        self.summarize.start(30, now=False)
 
     def stopProtocol(self):
         # clean shutdown has to happen like:
