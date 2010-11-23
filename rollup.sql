@@ -4,6 +4,10 @@
 */
 SET @atomic_now = DATE_SUB(NOW(), INTERVAL 1 MINUTE);
 
+-- before doing summary, capture meta info
+INSERT IGNORE INTO _meta SELECT DISTINCT stat, func FROM raw;
+INSERT INTO raw value(NOW(), 'SUM', 'stat_created', ROW_COUNT());
+
 -- minute summary grouping
 SET @atomic_now = TRUNC_TO_MINUTE(@atomic_now);
 START TRANSACTION;

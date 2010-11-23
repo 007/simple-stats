@@ -10,6 +10,13 @@ CREATE TABLE `raw` (
   `data` float NOT NULL
 ) ENGINE=MEMORY DEFAULT CHARSET=ascii;
 
+-- metadata table, uniq stat/func map
+CREATE TABLE `_meta` (
+  `stat` varchar(100) NOT NULL,
+  `func` enum('SUM','AVG','MIN','MAX') NOT NULL,
+  PRIMARY KEY (`stat`,`func`)
+) ENGINE=InnoDB DEFAULT CHARSET=ascii;
+
 -- 2 indexes on each of these:
 -- one for rolling up to next-largest bucket
 -- one for selecting stats by timerange
