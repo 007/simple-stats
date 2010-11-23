@@ -22,20 +22,23 @@ CREATE TABLE `_meta` (
 -- one for selecting stats by timerange
 CREATE TABLE `minute_summary` (
   `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ts_h` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `ts_d` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `func` enum('SUM','AVG','MIN','MAX') NOT NULL,
   `stat` varchar(100) NOT NULL,
   `data` float NOT NULL,
   PRIMARY KEY (`stat`,`ts`),
-  KEY `func` (`func`)
+  KEY `ts_h` (`ts_h`)
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
 CREATE TABLE `hour_summary` (
   `ts` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ts_d` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
   `func` enum('SUM','AVG','MIN','MAX') NOT NULL,
   `stat` varchar(100) NOT NULL,
   `data` float NOT NULL,
   PRIMARY KEY (`stat`,`ts`),
-  KEY `func` (`func`)
+  KEY `ts_d` (`ts_h`)
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
 CREATE TABLE `day_summary` (
