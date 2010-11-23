@@ -38,7 +38,7 @@ CREATE TABLE `hour_summary` (
   `stat` varchar(100) NOT NULL,
   `data` float NOT NULL,
   PRIMARY KEY (`stat`,`ts`),
-  KEY `ts_d` (`ts_h`)
+  KEY `ts_d` (`ts_d`)
 ) ENGINE=InnoDB DEFAULT CHARSET=ascii;
 
 CREATE TABLE `day_summary` (
