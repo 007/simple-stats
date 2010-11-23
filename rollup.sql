@@ -8,6 +8,10 @@ SET @atomic_now = DATE_SUB(NOW(), INTERVAL 1 MINUTE);
 INSERT IGNORE INTO _meta SELECT DISTINCT stat, func FROM raw;
 INSERT INTO raw value(NOW(), 'SUM', 'stat_created', ROW_COUNT());
 
+-- special case for SUM, only keep non-zero entries
+-- keeps from tracking tons of empty stat_created entries through minute/hour/day tables
+DELETE FROM raw WHERE func = 'SUM' AND data = 0;
+
 -- minute summary grouping
 SET @atomic_now = TRUNC_TO_MINUTE(@atomic_now);
 START TRANSACTION;
@@ -38,7 +42,7 @@ REPLACE day_summary SELECT TRUNC_TO_DAY(ts) t, func, stat, MAX(data) FROM hour_s
 COMMIT;
 
 -- cleanup old entries in minute/hour table
--- remove minute-summary after 2 days, hour_sumamry after 31 (should be 7?)
+-- remove minute-summary after 2 days, hour_summary after 31 (should be 7?)
 DELETE FROM minute_summary WHERE ts < DATE_SUB(@atomic_now, INTERVAL 2 DAY);
 DELETE FROM hour_summary WHERE ts < DATE_SUB(@atomic_now, INTERVAL 31 DAY);
 
